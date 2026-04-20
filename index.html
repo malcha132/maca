@@ -3,90 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>MACINA´S BIG GAME</title>
+<title>Macina's BIG GAME</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body {
-  width: 100%; height: 100%;
-  overflow: hidden;
-  background: #0a0a14;
-  touch-action: none;
-}
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a14; touch-action: none; }
 body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-family: monospace;
-  color: #c8c8e8;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: monospace; color: #c8c8e8;
+}
+#title {
+  font-size: 11px; letter-spacing: 0.18em; opacity: 0.35; margin-bottom: 4px; text-transform: uppercase;
 }
 #ui {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  max-width: 700px;
-  padding: 6px 10px;
-  font-size: 13px;
-  color: #8888aa;
-  flex-shrink: 0;
+  display: flex; justify-content: space-between; width: 100%; max-width: 700px;
+  padding: 4px 10px; font-size: 13px; color: #8888aa; flex-shrink: 0;
 }
 #ui b { color: #c8c8e8; }
-#wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-#gc {
-  display: block;
-  background: #0d0d1a;
-  border-radius: 8px;
-  border: 1px solid #1e1e3a;
-  touch-action: none;
-}
+#wrap { position: relative; flex-shrink: 0; }
+#gc { display: block; background: #0d0d1a; border-radius: 8px; border: 1px solid #1e1e3a; touch-action: none; }
 #msg {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  pointer-events: none;
-  z-index: 10;
-  white-space: nowrap;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none; z-index: 10; white-space: nowrap;
 }
 #msg .box {
-  background: rgba(10,10,20,0.93);
-  padding: 14px 28px;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 14px;
-  line-height: 2;
-  border: 1px solid #2a2a4a;
+  background: rgba(10,10,20,0.93); padding: 16px 30px; border-radius: 8px;
+  color: #fff; font-size: 14px; line-height: 2.1; border: 1px solid #2a2a4a;
 }
 #msg .sub { font-size: 11px; opacity: 0.5; }
 #msg .big { font-size: 20px; font-weight: bold; }
+#msg .wish { font-size: 13px; color: #ef9f27; margin-top: 2px; }
 #startBtn {
-  display: none;
-  margin-top: 10px;
-  font-family: monospace;
-  font-size: 14px;
-  padding: 8px 28px;
-  cursor: pointer;
-  border: 1px solid #3a3a5a;
-  border-radius: 6px;
-  background: transparent;
-  color: #c8c8e8;
-  flex-shrink: 0;
+  display: none; margin-top: 10px; font-family: monospace; font-size: 14px;
+  padding: 8px 28px; cursor: pointer; border: 1px solid #3a3a5a; border-radius: 6px;
+  background: transparent; color: #c8c8e8; flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
 #startBtn:active { background: #1a1a2e; }
-#hint {
-  margin-top: 8px;
-  font-size: 11px;
-  opacity: 0.22;
-  flex-shrink: 0;
-}
+#hint { margin-top: 8px; font-size: 11px; opacity: 0.22; flex-shrink: 0; }
 </style>
 </head>
 <body>
 
+<div id="title">Macina's BIG GAME</div>
 <div id="ui">
   <span>SKÓRE: <b id="score">0</b></span>
   <span id="lv">LEVEL 1</span>
@@ -100,36 +58,31 @@ body {
 <div id="hint">← → nebo myš · mezerník pro start</div>
 
 <script>
-const canvas  = document.getElementById('gc');
-const ctx     = canvas.getContext('2d');
-const scoreEl = document.getElementById('score');
-const livesEl = document.getElementById('livesDisp');
-const msgEl   = document.getElementById('msg');
-const lvEl    = document.getElementById('lv');
+const canvas   = document.getElementById('gc');
+const ctx      = canvas.getContext('2d');
+const scoreEl  = document.getElementById('score');
+const livesEl  = document.getElementById('livesDisp');
+const msgEl    = document.getElementById('msg');
+const lvEl     = document.getElementById('lv');
 const startBtn = document.getElementById('startBtn');
-const hint    = document.getElementById('hint');
+const hint     = document.getElementById('hint');
 
 const isMobile = 'ontouchstart' in window;
 if (isMobile) hint.textContent = 'táhni prstem · klepni pro start';
 
-// ── Canvas size: fill available space ─────────────
 function calcSize() {
-  const uiH   = document.getElementById('ui').offsetHeight;
-  const btnH  = 60; // button + hint area
-  const avW   = window.innerWidth;
-  const avH   = window.innerHeight - uiH - btnH - 16;
-  const W     = Math.min(700, avW - (isMobile ? 0 : 24));
-  const H     = isMobile ? avH : Math.min(Math.round(W * 0.68), avH);
+  const uiH = 60, btnH = 60;
+  const avW = window.innerWidth;
+  const avH = window.innerHeight - uiH - btnH - 20;
+  const W   = Math.min(700, avW - (isMobile ? 0 : 24));
+  const H   = isMobile ? avH : Math.min(Math.round(W * 0.68), avH);
   return { W: Math.floor(W), H: Math.floor(H) };
 }
 
 const { W, H } = calcSize();
-canvas.width  = W;
-canvas.height = H;
-canvas.style.width  = W + 'px';
-canvas.style.height = H + 'px';
+canvas.width = W; canvas.height = H;
+canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
 
-// ── Game constants ────────────────────────────────
 const ROWS = 6, COLS = 10;
 const BW   = Math.floor((W - 20) / COLS);
 const BH   = Math.max(14, Math.floor(H * 0.055));
@@ -139,8 +92,6 @@ const PADH = Math.max(10, Math.floor(H * 0.035));
 const BALLR    = Math.max(6, Math.floor(W * 0.013));
 const BRICKTOP = Math.floor(H * 0.1);
 const PADY     = H - Math.floor(H * 0.08);
-
-// Mobile gets slower base speed
 const BASE_SPD = isMobile ? 2.2 : 3.5;
 const SPD_INC  = isMobile ? 0.2 : 0.35;
 
@@ -153,17 +104,26 @@ const COLORS = [
   ['#d4537e','#993556'],
 ];
 
-// ── State ─────────────────────────────────────────
-let score, lives, level, bricks, ball, pad, state, animId;
-let keys   = { left: false, right: false };
-let mouseX = -1, touchX = -1;
+const WISHES = [
+  '🎉 Vše nejlepší, Macino!',
+  '🌟 Ať se ti daří!',
+  '🎂 Hodně štěstí a zdraví!',
+  '💪 Jen tak dál!',
+  '🥳 Macino, ty jsi šampion!',
+  '✨ Ať splní se každé přání!',
+];
 
-// ── UI helpers ────────────────────────────────────
-function showMsg(title, sub, big) {
+let score, lives, level, bricks, ball, pad, state, animId;
+let keys = { left: false, right: false };
+let mouseX = -1, touchX = -1;
+let wishIndex = 0;
+
+function showMsg(title, sub, big, wish) {
   msgEl.innerHTML =
     '<div class="box">' +
     (title ? '<div>' + title + '</div>' : '') +
     (big   ? '<div class="big">' + big + '</div>' : '') +
+    (wish  ? '<div class="wish">' + wish + '</div>' : '') +
     (sub   ? '<div class="sub">' + sub + '</div>' : '') +
     '</div>';
 }
@@ -174,10 +134,9 @@ function updateUI() {
   livesEl.innerHTML   = '&#9679; '.repeat(lives).trim();
 }
 
-// ── Init ──────────────────────────────────────────
 function startGame() {
   startBtn.style.display = 'none';
-  score = 0; lives = 3; level = 1;
+  score = 0; lives = 3; level = 1; wishIndex = 0;
   updateUI();
   initLevel();
   if (animId) cancelAnimationFrame(animId);
@@ -214,30 +173,41 @@ function launch() {
   if (state === 'ready') { state = 'play'; hideMsg(); }
 }
 
-// ── Controls ──────────────────────────────────────
+function levelComplete() {
+  const wish = WISHES[wishIndex % WISHES.length];
+  wishIndex++;
+  level++;
+  updateUI();
+  initLevel();
+  // override the default "LEVEL X" message with the wish
+  showMsg(
+    '🎊 Level splněn!',
+    isMobile ? 'klepni pro další level' : 'mezerník nebo klikni',
+    null,
+    wish
+  );
+}
+
 startBtn.addEventListener('click', startGame);
 startBtn.addEventListener('touchend', e => { e.preventDefault(); startGame(); });
 
 canvas.addEventListener('mousemove', e => {
   const r = canvas.getBoundingClientRect();
-  mouseX = (e.clientX - r.left) * (W / r.width);
-  touchX = -1;
+  mouseX = (e.clientX - r.left) * (W / r.width); touchX = -1;
 });
 canvas.addEventListener('click', launch);
 
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
   const r = canvas.getBoundingClientRect();
-  touchX = (e.touches[0].clientX - r.left) * (W / r.width);
-  mouseX = -1;
+  touchX = (e.touches[0].clientX - r.left) * (W / r.width); mouseX = -1;
   launch();
 }, { passive: false });
 
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
   const r = canvas.getBoundingClientRect();
-  touchX = (e.touches[0].clientX - r.left) * (W / r.width);
-  mouseX = -1;
+  touchX = (e.touches[0].clientX - r.left) * (W / r.width); mouseX = -1;
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => { e.preventDefault(); }, { passive: false });
@@ -252,14 +222,8 @@ document.addEventListener('keyup', e => {
   if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
 });
 
-// ── Loop ──────────────────────────────────────────
-function loop() {
-  update();
-  draw();
-  animId = requestAnimationFrame(loop);
-}
+function loop() { update(); draw(); animId = requestAnimationFrame(loop); }
 
-// ── Update ────────────────────────────────────────
 function update() {
   if (!pad || state === 'gameover') return;
 
@@ -273,19 +237,15 @@ function update() {
 
   if (state !== 'play') return;
 
-  ball.x += ball.vx;
-  ball.y += ball.vy;
+  ball.x += ball.vx; ball.y += ball.vy;
 
   if (ball.x - ball.r < 0) { ball.x = ball.r;     ball.vx =  Math.abs(ball.vx); }
   if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); }
   if (ball.y - ball.r < 0) { ball.y = ball.r;      ball.vy =  Math.abs(ball.vy); }
 
-  // paddle
   if (ball.vy > 0 &&
-      ball.y + ball.r > pad.y &&
-      ball.y + ball.r < pad.y + pad.h + 12 &&
-      ball.x > pad.x - ball.r &&
-      ball.x < pad.x + pad.w + ball.r) {
+      ball.y + ball.r > pad.y && ball.y + ball.r < pad.y + pad.h + 12 &&
+      ball.x > pad.x - ball.r && ball.x < pad.x + pad.w + ball.r) {
     const rel = (ball.x - (pad.x + pad.w/2)) / (pad.w/2);
     const s   = Math.hypot(ball.vx, ball.vy);
     const ang = rel * 60 * Math.PI / 180;
@@ -294,34 +254,27 @@ function update() {
     ball.y  = pad.y - ball.r - 1;
   }
 
-  // bottom
   if (ball.y - ball.r > H + 10) {
     lives--;
     if (lives <= 0) {
-      state = 'gameover';
-      updateUI();
+      state = 'gameover'; updateUI();
       showMsg('KONEC HRY', isMobile ? 'klepni ZNOVU' : 'klikni ZNOVU', score + '\u00a0bodů');
       startBtn.textContent = 'ZNOVU';
       startBtn.style.display = 'inline-block';
     } else {
-      updateUI();
-      resetBall();
-      state = 'ready';
+      updateUI(); resetBall(); state = 'ready';
       const w = lives === 1 ? 'život' : 'životy';
       showMsg('AU!', 'zbývá ' + lives + ' ' + w + (isMobile ? ' · klepni' : ' — mezerník nebo klik'));
     }
     return;
   }
 
-  // bricks
   for (const b of bricks) {
     if (!b.alive) continue;
     const bx2 = b.x + BW - BPAD*2, by2 = b.y + BH;
     if (ball.x+ball.r > b.x && ball.x-ball.r < bx2 &&
         ball.y+ball.r > b.y && ball.y-ball.r < by2) {
-      b.alive = false;
-      score  += b.pts;
-      scoreEl.textContent = score;
+      b.alive = false; score += b.pts; scoreEl.textContent = score;
       const ol = ball.x+ball.r-b.x, or2 = bx2-(ball.x-ball.r);
       const ot = ball.y+ball.r-b.y, ob  = by2-(ball.y-ball.r);
       if (Math.min(ol,or2) < Math.min(ot,ob)) ball.vx *= -1; else ball.vy *= -1;
@@ -330,13 +283,11 @@ function update() {
   }
 
   if (bricks.every(b => !b.alive)) {
-    level++;
-    initLevel();
-    updateUI();
+    state = 'ready';   // pause before showing wish
+    levelComplete();
   }
 }
 
-// ── Draw ──────────────────────────────────────────
 function rr(x, y, w, h, r) {
   if (typeof r === 'number') r = [r,r,r,r];
   ctx.beginPath();
@@ -369,8 +320,7 @@ function draw() {
   ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
 }
 
-// ── Boot ──────────────────────────────────────────
-showMsg('BREAKOUT', isMobile ? 'klepni HRÁT pro start' : 'klikni HRÁT pro start');
+showMsg('Macina\'s BIG GAME', isMobile ? 'klepni HRÁT pro start' : 'klikni HRÁT pro start');
 startBtn.style.display = 'inline-block';
 </script>
 </body>
