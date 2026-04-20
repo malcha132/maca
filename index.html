@@ -6,28 +6,35 @@
 <title>BREAKOUT</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; }
-body {
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
   background: #0a0a14;
-  color: #c8c8e8;
-  font-family: monospace;
+  touch-action: none;
+}
+body {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px;
-  touch-action: none;
+  font-family: monospace;
+  color: #c8c8e8;
 }
 #ui {
   display: flex;
   justify-content: space-between;
   width: 100%;
-  max-width: 600px;
+  max-width: 700px;
+  padding: 6px 10px;
   font-size: 13px;
-  margin-bottom: 6px;
   color: #8888aa;
+  flex-shrink: 0;
 }
 #ui b { color: #c8c8e8; }
+#wrap {
+  position: relative;
+  flex-shrink: 0;
+}
 #gc {
   display: block;
   background: #0d0d1a;
@@ -35,7 +42,6 @@ body {
   border: 1px solid #1e1e3a;
   touch-action: none;
 }
-#wrap { position: relative; width: 100%; max-width: 600px; }
 #msg {
   position: absolute;
   top: 50%; left: 50%;
@@ -61,16 +67,22 @@ body {
   margin-top: 10px;
   font-family: monospace;
   font-size: 14px;
-  padding: 8px 24px;
+  padding: 8px 28px;
   cursor: pointer;
   border: 1px solid #3a3a5a;
   border-radius: 6px;
   background: transparent;
   color: #c8c8e8;
+  flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
 #startBtn:active { background: #1a1a2e; }
-#hint { margin-top: 10px; font-size: 11px; opacity: 0.22; }
+#hint {
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: 0.22;
+  flex-shrink: 0;
+}
 </style>
 </head>
 <body>
@@ -88,34 +100,49 @@ body {
 <div id="hint">← → nebo myš · mezerník pro start</div>
 
 <script>
-const canvas = document.getElementById('gc');
-const ctx    = canvas.getContext('2d');
-const scoreEl    = document.getElementById('score');
-const livesEl    = document.getElementById('livesDisp');
-const msgEl      = document.getElementById('msg');
-const lvEl       = document.getElementById('lv');
-const startBtn   = document.getElementById('startBtn');
-const hint       = document.getElementById('hint');
+const canvas  = document.getElementById('gc');
+const ctx     = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('livesDisp');
+const msgEl   = document.getElementById('msg');
+const lvEl    = document.getElementById('lv');
+const startBtn = document.getElementById('startBtn');
+const hint    = document.getElementById('hint');
 
 const isMobile = 'ontouchstart' in window;
 if (isMobile) hint.textContent = 'táhni prstem · klepni pro start';
 
-// canvas size
-const W = Math.min(600, window.innerWidth - 24);
-const H = Math.min(Math.round(W * 0.68), window.innerHeight - 130);
+// ── Canvas size: fill available space ─────────────
+function calcSize() {
+  const uiH   = document.getElementById('ui').offsetHeight;
+  const btnH  = 60; // button + hint area
+  const avW   = window.innerWidth;
+  const avH   = window.innerHeight - uiH - btnH - 16;
+  const W     = Math.min(700, avW - (isMobile ? 0 : 24));
+  const H     = isMobile ? avH : Math.min(Math.round(W * 0.68), avH);
+  return { W: Math.floor(W), H: Math.floor(H) };
+}
+
+const { W, H } = calcSize();
 canvas.width  = W;
 canvas.height = H;
+canvas.style.width  = W + 'px';
+canvas.style.height = H + 'px';
 
-// game constants
+// ── Game constants ────────────────────────────────
 const ROWS = 6, COLS = 10;
 const BW   = Math.floor((W - 20) / COLS);
 const BH   = Math.max(14, Math.floor(H * 0.055));
 const BPAD = 3;
-const PADW = Math.floor(W * 0.2);
-const PADH = Math.max(8, Math.floor(H * 0.035));
-const BALLR = Math.max(5, Math.floor(W * 0.011));
-const BRICKTOP = Math.floor(H * 0.12);
-const PADY = H - Math.floor(H * 0.1);
+const PADW = Math.floor(W * 0.22);
+const PADH = Math.max(10, Math.floor(H * 0.035));
+const BALLR    = Math.max(6, Math.floor(W * 0.013));
+const BRICKTOP = Math.floor(H * 0.1);
+const PADY     = H - Math.floor(H * 0.08);
+
+// Mobile gets slower base speed
+const BASE_SPD = isMobile ? 2.2 : 3.5;
+const SPD_INC  = isMobile ? 0.2 : 0.35;
 
 const COLORS = [
   ['#e24b4a','#a32d2d'],
@@ -126,13 +153,12 @@ const COLORS = [
   ['#d4537e','#993556'],
 ];
 
-// game state
+// ── State ─────────────────────────────────────────
 let score, lives, level, bricks, ball, pad, state, animId;
 let keys   = { left: false, right: false };
-let mouseX = -1;
-let touchX = -1;
+let mouseX = -1, touchX = -1;
 
-// ── helpers ──────────────────────────────────────
+// ── UI helpers ────────────────────────────────────
 function showMsg(title, sub, big) {
   msgEl.innerHTML =
     '<div class="box">' +
@@ -142,25 +168,22 @@ function showMsg(title, sub, big) {
     '</div>';
 }
 function hideMsg() { msgEl.innerHTML = ''; }
-
 function updateUI() {
   scoreEl.textContent = score;
-  lvEl.textContent = 'LEVEL ' + level;
-  livesEl.innerHTML = '&#9679; '.repeat(lives).trim();
+  lvEl.textContent    = 'LEVEL ' + level;
+  livesEl.innerHTML   = '&#9679; '.repeat(lives).trim();
 }
 
-function roundRect(x, y, w, h, r) {
-  if (typeof r === 'number') r = [r,r,r,r];
-  ctx.beginPath();
-  ctx.moveTo(x+r[0], y);
-  ctx.lineTo(x+w-r[1], y); ctx.quadraticCurveTo(x+w, y, x+w, y+r[1]);
-  ctx.lineTo(x+w, y+h-r[2]); ctx.quadraticCurveTo(x+w, y+h, x+w-r[2], y+h);
-  ctx.lineTo(x+r[3], y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r[3]);
-  ctx.lineTo(x, y+r[0]); ctx.quadraticCurveTo(x, y, x+r[0], y);
-  ctx.closePath();
+// ── Init ──────────────────────────────────────────
+function startGame() {
+  startBtn.style.display = 'none';
+  score = 0; lives = 3; level = 1;
+  updateUI();
+  initLevel();
+  if (animId) cancelAnimationFrame(animId);
+  animId = requestAnimationFrame(loop);
 }
 
-// ── init ─────────────────────────────────────────
 function initLevel() {
   bricks = [];
   for (let r = 0; r < ROWS; r++) {
@@ -180,27 +203,18 @@ function initLevel() {
 }
 
 function resetBall() {
-  pad = { x: W/2 - PADW/2, y: PADY, w: PADW, h: PADH };
-  const spd = 3.5 + level * 0.35;
+  pad  = { x: W/2 - PADW/2, y: PADY, w: PADW, h: PADH };
+  const spd   = BASE_SPD + level * SPD_INC;
   const angle = (Math.random() * 50 + 65) * Math.PI / 180;
-  const dir = Math.random() < 0.5 ? 1 : -1;
+  const dir   = Math.random() < 0.5 ? 1 : -1;
   ball = { x: W/2, y: PADY - BALLR - 6, vx: Math.cos(angle)*spd*dir, vy: -Math.sin(angle)*spd, r: BALLR };
-}
-
-function startGame() {
-  startBtn.style.display = 'none';
-  score = 0; lives = 3; level = 1;
-  updateUI();
-  initLevel();
-  if (animId) cancelAnimationFrame(animId);
-  animId = requestAnimationFrame(loop);
 }
 
 function launch() {
   if (state === 'ready') { state = 'play'; hideMsg(); }
 }
 
-// ── controls ──────────────────────────────────────
+// ── Controls ──────────────────────────────────────
 startBtn.addEventListener('click', startGame);
 startBtn.addEventListener('touchend', e => { e.preventDefault(); startGame(); });
 
@@ -238,38 +252,35 @@ document.addEventListener('keyup', e => {
   if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
 });
 
-// ── loop ──────────────────────────────────────────
+// ── Loop ──────────────────────────────────────────
 function loop() {
   update();
   draw();
   animId = requestAnimationFrame(loop);
 }
 
-// ── update ────────────────────────────────────────
+// ── Update ────────────────────────────────────────
 function update() {
   if (!pad || state === 'gameover') return;
 
-  // move paddle
-  const spd = 6 + level * 0.5;
+  const padSpd = (isMobile ? 5 : 6) + level * 0.5;
   if      (touchX >= 0) pad.x = Math.max(0, Math.min(W - pad.w, touchX - pad.w/2));
   else if (mouseX >= 0) pad.x = Math.max(0, Math.min(W - pad.w, mouseX - pad.w/2));
   else {
-    if (keys.left)  pad.x = Math.max(0,        pad.x - spd);
-    if (keys.right) pad.x = Math.min(W - pad.w, pad.x + spd);
+    if (keys.left)  pad.x = Math.max(0,        pad.x - padSpd);
+    if (keys.right) pad.x = Math.min(W - pad.w, pad.x + padSpd);
   }
 
   if (state !== 'play') return;
 
-  // move ball
   ball.x += ball.vx;
   ball.y += ball.vy;
 
-  // wall bounces
-  if (ball.x - ball.r < 0)  { ball.x = ball.r;      ball.vx =  Math.abs(ball.vx); }
-  if (ball.x + ball.r > W)  { ball.x = W - ball.r;  ball.vx = -Math.abs(ball.vx); }
-  if (ball.y - ball.r < 0)  { ball.y = ball.r;       ball.vy =  Math.abs(ball.vy); }
+  if (ball.x - ball.r < 0) { ball.x = ball.r;     ball.vx =  Math.abs(ball.vx); }
+  if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); }
+  if (ball.y - ball.r < 0) { ball.y = ball.r;      ball.vy =  Math.abs(ball.vy); }
 
-  // paddle bounce
+  // paddle
   if (ball.vy > 0 &&
       ball.y + ball.r > pad.y &&
       ball.y + ball.r < pad.y + pad.h + 12 &&
@@ -283,7 +294,7 @@ function update() {
     ball.y  = pad.y - ball.r - 1;
   }
 
-  // bottom — lose life
+  // bottom
   if (ball.y - ball.r > H + 10) {
     lives--;
     if (lives <= 0) {
@@ -302,23 +313,22 @@ function update() {
     return;
   }
 
-  // brick collision
-  for (let b of bricks) {
+  // bricks
+  for (const b of bricks) {
     if (!b.alive) continue;
     const bx2 = b.x + BW - BPAD*2, by2 = b.y + BH;
     if (ball.x+ball.r > b.x && ball.x-ball.r < bx2 &&
         ball.y+ball.r > b.y && ball.y-ball.r < by2) {
       b.alive = false;
-      score += b.pts;
+      score  += b.pts;
       scoreEl.textContent = score;
-      const ol = ball.x+ball.r - b.x, or2 = bx2 - (ball.x-ball.r);
-      const ot = ball.y+ball.r - b.y, ob  = by2 - (ball.y-ball.r);
+      const ol = ball.x+ball.r-b.x, or2 = bx2-(ball.x-ball.r);
+      const ot = ball.y+ball.r-b.y, ob  = by2-(ball.y-ball.r);
       if (Math.min(ol,or2) < Math.min(ot,ob)) ball.vx *= -1; else ball.vy *= -1;
       break;
     }
   }
 
-  // level clear
   if (bricks.every(b => !b.alive)) {
     level++;
     initLevel();
@@ -326,23 +336,32 @@ function update() {
   }
 }
 
-// ── draw ─────────────────────────────────────────
+// ── Draw ──────────────────────────────────────────
+function rr(x, y, w, h, r) {
+  if (typeof r === 'number') r = [r,r,r,r];
+  ctx.beginPath();
+  ctx.moveTo(x+r[0], y);
+  ctx.lineTo(x+w-r[1], y); ctx.quadraticCurveTo(x+w, y, x+w, y+r[1]);
+  ctx.lineTo(x+w, y+h-r[2]); ctx.quadraticCurveTo(x+w, y+h, x+w-r[2], y+h);
+  ctx.lineTo(x+r[3], y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r[3]);
+  ctx.lineTo(x, y+r[0]); ctx.quadraticCurveTo(x, y, x+r[0], y);
+  ctx.closePath();
+}
+
 function draw() {
   ctx.clearRect(0, 0, W, H);
-  if (!bricks || !ball || !pad) return;   // ← guard: nic nekreslit před inicializací
+  if (!bricks || !ball || !pad) return;
 
   for (const b of bricks) {
     if (!b.alive) continue;
     const bw = BW - BPAD*2;
-    ctx.fillStyle = b.color[0]; roundRect(b.x, b.y, bw, BH, 3); ctx.fill();
-    ctx.fillStyle = b.color[1]; roundRect(b.x, b.y+BH-4, bw, 4, [0,0,3,3]); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.12)'; roundRect(b.x+2, b.y+2, bw-4, 3, 2); ctx.fill();
+    ctx.fillStyle = b.color[0]; rr(b.x, b.y, bw, BH, 3); ctx.fill();
+    ctx.fillStyle = b.color[1]; rr(b.x, b.y+BH-4, bw, 4, [0,0,3,3]); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; rr(b.x+2, b.y+2, bw-4, 3, 2); ctx.fill();
   }
 
-  ctx.fillStyle = '#c8c8e8';
-  roundRect(pad.x, pad.y, pad.w, pad.h, 5); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.22)';
-  roundRect(pad.x+3, pad.y+2, pad.w-6, 3, 2); ctx.fill();
+  ctx.fillStyle = '#c8c8e8'; rr(pad.x, pad.y, pad.w, pad.h, 5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(pad.x+3, pad.y+2, pad.w-6, 3, 2); ctx.fill();
 
   ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
   ctx.fillStyle = '#fff'; ctx.fill();
@@ -350,7 +369,7 @@ function draw() {
   ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
 }
 
-// ── start screen ─────────────────────────────────
+// ── Boot ──────────────────────────────────────────
 showMsg('BREAKOUT', isMobile ? 'klepni HRÁT pro start' : 'klikni HRÁT pro start');
 startBtn.style.display = 'inline-block';
 </script>
